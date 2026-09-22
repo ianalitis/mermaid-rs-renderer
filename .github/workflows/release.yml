@@ -10,6 +10,11 @@ permissions:
 
 jobs:
   verify-tag-version:
+    # Publish only from the canonical repository. Every other job needs this one,
+    # directly or transitively, and a skipped dependency skips its dependents, so
+    # this single guard keeps a fork from building, publishing to crates.io, or
+    # updating the Homebrew and AUR formulas from a `v*.*` tag.
+    if: github.repository == '1jehuang/mermaid-rs-renderer'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
