@@ -95,7 +95,7 @@ pub(super) fn compute_quadrant_layout(
         .unwrap_or(padding);
 
     let base_grid_x = y_axis_width + padding;
-    let grid_y = title_height + padding;
+    let grid_y_base = title_height + padding;
 
     // Measure points before fixing the canvas bounds. QuadrantPointLayout has a
     // single anchor shared by the marker and its label, so reserve any label
@@ -128,6 +128,26 @@ pub(super) fn compute_quadrant_layout(
         })
         .fold(0.0, f32::max);
 
+    // Reserve vertical label overflow by the same rule as the horizontal
+    // reserve above. The horizontal case is handled by shifting the grid right
+    // and widening the canvas; nothing did the equivalent for height, so a point
+    // on the top or bottom edge whose label wraps to more than two lines pushed
+    // its label box outside the canvas. Shifting `grid_y` moves the grid, the
+    // markers and every label together, and `height` grows to match.
+    let top_overflow = measured_points
+        .iter()
+        .map(|(_, y, label, _)| {
+            (label.height / 2.0 - (grid_y_base + (1.0 - y) * grid_size)).max(0.0)
+        })
+        .fold(0.0, f32::max);
+    let grid_y = grid_y_base + top_overflow;
+    let bottom_overflow = measured_points
+        .iter()
+        .map(|(_, y, label, _)| {
+            (grid_y + (1.0 - y) * grid_size + label.height / 2.0 - (grid_y + grid_size)).max(0.0)
+        })
+        .fold(0.0, f32::max);
+
     let points: Vec<QuadrantPointLayout> = measured_points
         .into_iter()
         .map(|(x, y, label, color)| QuadrantPointLayout {
@@ -139,7 +159,7 @@ pub(super) fn compute_quadrant_layout(
         .collect();
 
     let width = base_width + left_overflow + right_overflow;
-    let height = grid_y + grid_size + x_axis_height + padding;
+    let height = grid_y + grid_size + bottom_overflow + x_axis_height + padding;
 
     Layout {
         kind: graph.kind,
